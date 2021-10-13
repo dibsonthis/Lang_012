@@ -1,0 +1,7 @@
+
+name				= "Jane";
+height				= 147.0;
+sex					= "F";
+age					= 24;
+fav_food			= "dumplings";
+fav_drink			= "water";

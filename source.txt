@@ -1,0 +1,5 @@
+
+Louise = import("louise.txt");
+
+print("Louise's age is " + str(Louise::age));
+print("\nLouise's sex is " + Louise::sex * 100);
