@@ -1,7 +1,5 @@
 
-Louise = import("louise.txt");
+Person = import("person.txt");
 
-print("Louise's age is " + str(Louise::age));
-print("\nLouise's sex is " + Louise::sex * 100);
-
-print("\n\nDEV!");
+print(Person::name + "'s age is " + str(Person::age));
+print("\n" + Person::name + "'s sex is " + Person::sex);
