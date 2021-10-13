@@ -1241,7 +1241,7 @@ public:
 				eval.eval(expr);
 			}
 
-			node = eval.global_scope;
+			*node = *eval.global_scope;
 			return;
 		}
 	}
