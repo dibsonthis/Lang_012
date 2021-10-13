@@ -749,6 +749,8 @@ public:
 			return;
 		}
 
+		//TODO: move this to the actual eval functions so it happens earlier and everywhere
+
 		node->right->type_type = type_repr_builtin(node->right->type);
 
 		if (node->left->type != TYPE_ID && node->left->type != TYPE_COLON && node->left->type != TYPE_DOUBLE_COLON)
@@ -766,6 +768,12 @@ public:
 
 			if (node->left->type == TYPE_EMPTY)
 			{
+				if (node->right->type == TYPE_REF)
+				{
+					current_scope->scope_data[var_name] = { node->right->ref->type_type, node->right->ref };
+					return;
+				}
+
 				// create a copy of the right node and assign it
 				std::shared_ptr<Node> right = std::make_shared<Node>(*node->right);
 				current_scope->scope_data[var_name] = { node->right->type_type, right };
@@ -1119,7 +1127,7 @@ public:
 		{
 			if (node->args.size() != 1)
 			{
-				node->type == TYPE_ERROR;
+				node->type = TYPE_ERROR;
 				std::cout << "\n" + log_error(node, "Built-in function 'type_of' only accepts one argument.");
 				return;
 			}
@@ -1137,7 +1145,7 @@ public:
 		{
 			if (node->args.size() != 1)
 			{
-				node->type == TYPE_ERROR;
+				node->type = TYPE_ERROR;
 				std::cout << "\n" + log_error(node, "Built-in function 'str' only accepts one argument.");
 				return;
 			}
@@ -1166,6 +1174,24 @@ public:
 				node = arg;
 			}
 
+			return;
+		}
+
+		if (*node->call_name == "ref")
+		{
+			if (node->args.size() != 1)
+			{
+				node->type = TYPE_ERROR;
+				std::cout << "\n" + log_error(node, "Built-in function 'ref' only accepts one argument.");
+				return;
+			}
+
+			auto& arg = node->args[0];
+
+			eval(arg);
+
+			node->type = TYPE_REF;
+			node->ref = arg;
 			return;
 		}
 

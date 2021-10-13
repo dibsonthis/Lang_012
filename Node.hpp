@@ -48,7 +48,7 @@ struct Node
 	std::vector<std::shared_ptr<Node>> if_else_statements;
 
 	// Ref
-	std::shared_ptr<Node> ref;
+	std::shared_ptr<Node> ref = nullptr;
 	std::shared_ptr<Node>* ref_address;
 
 	// Type

@@ -1,5 +1,16 @@
 
-Person = import("person.txt");
+a = 45;
+b = a;
+c = ref(a);
 
-print(Person::name + "'s age is " + str(Person::age));
-print("\n" + Person::name + "'s sex is " + Person::sex);
+a = a + 5;
+
+print("\n a: ", a);
+print("\n b: ", b);
+print("\n c: ", c);
+
+c = c * 2;
+
+print("\n a: ", a);
+print("\n b: ", b);
+print("\n c: ", c);
