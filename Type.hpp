@@ -78,7 +78,8 @@ enum Type
 	TYPE_BOOL,
 	TYPE_REF,
 	TYPE_EQ_AND,
-	TYPE_SCOPE
+	TYPE_SCOPE,
+	TYPE_VAR
 };
 
 std::string type_repr(Type type)
@@ -155,6 +156,7 @@ std::string type_repr(Type type)
 		case TYPE_WHILE:				return "WHILE";
 		case TYPE_REF:					return "REF";
 		case TYPE_SCOPE:				return "SCOPE";
+		case TYPE_VAR:					return "VAR";
 
 		default: return "NO_REPR";
 	}

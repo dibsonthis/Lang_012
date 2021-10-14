@@ -1,9 +1,9 @@
 #pragma once
 
-#include "Parser.hpp"
+#include "AST_Parser.hpp"
 #include "Type.hpp"
 
-std::string not_implemented_error(std::shared_ptr<Node> op)
+std::string not_implemented_error(std::shared_ptr<AST_Node> op)
 {
 	if (op->left == nullptr)
 	{
@@ -13,16 +13,7 @@ std::string not_implemented_error(std::shared_ptr<Node> op)
 	return "Cannot perform '" + type_repr(op->type) + "' on '" + type_repr(op->left->type) + "' and '" + type_repr(op->right->type) + "'.";
 }
 
-struct Variable
-{
-	std::string id;
-	std::shared_ptr<Node> scope;
-	bool not_found = false;
-
-	Variable() = default;
-};
-
-class Eval
+class AST_Eval
 {
 public:
 
@@ -31,14 +22,14 @@ public:
 
 	int __scopes_num = 0;
 
-	Eval() = default;
+	AST_Eval() = default;
 
-	Eval(Parser parser) : file_name(parser.file_name) {}
+	AST_Eval(AST_Parser parser) : file_name(parser.file_name) {}
 
-	std::shared_ptr<Node> global_scope = std::make_shared<Node>(TYPE_SCOPE);
-	std::shared_ptr<Node>& current_scope = global_scope;
+	std::shared_ptr<AST_Node> global_scope = std::make_shared<AST_Node>(TYPE_SCOPE);
+	std::shared_ptr<AST_Node>& current_scope = global_scope;
 
-	std::string log_error(std::shared_ptr<Node> error_node, std::string message)
+	std::string log_error(std::shared_ptr<AST_Node> error_node, std::string message)
 	{
 		std::string error_message = "[Eval] Evaluation Error in '" + file_name + "' @ (" + std::to_string(error_node->line) + ", " + std::to_string(error_node->column) + "): " + message;
 		errors.push_back(error_message);
@@ -47,40 +38,143 @@ public:
 
 	void init()
 	{
-		global_scope->scope_name = "global";
-		global_scope->scope_types =
+		global_scope->SCOPE.name = "global";
+		global_scope->SCOPE.types =
 		{
 			"int", "bool", "float", "string", "scope", "any"
 		};
 	}
 
-	void eval(std::shared_ptr<Node> node)
+	std::shared_ptr<AST_Node> infer_type(std::shared_ptr<AST_Node> node)
+	{
+		std::shared_ptr<AST_Node> type = std::make_shared<AST_Node>(TYPE_TYPE);
+
+		switch (node->type)
+		{
+		case TYPE_INT:
+			type->TYPE.name = "int";
+			return type;
+		case TYPE_FLOAT:
+			type->TYPE.name = "float";
+			return type;
+		case TYPE_BOOL:
+			type->TYPE.name = "bool";
+			return type;
+		case TYPE_STRING:
+			type->TYPE.name = "string";
+			return type;
+		case TYPE_LIST:
+			type->TYPE.name = "list";
+			return type;
+		case TYPE_TYPE:
+			type->TYPE.name = "type";
+			return type;
+		default:
+			type->TYPE.built_in = false;
+			return type;
+		}
+	}
+
+	int implicit_cast(std::shared_ptr<AST_Node> value, std::string type)
+	{
+		int ok = 0;
+		int data_loss = 1;
+		int error = 2;
+
+		if (value->type == TYPE_INT && type == "float")
+		{
+			value->type = TYPE_FLOAT;
+			value->FLOAT.value = (float)value->INT.value;
+			return ok;
+		}
+		if (value->type == TYPE_FLOAT && type == "int")
+		{
+			value->type = TYPE_INT;
+			value->INT.value = (int)value->FLOAT.value;
+			return data_loss;
+		}
+		if (value->type == TYPE_BOOL && type == "int")
+		{
+			value->type = TYPE_INT;
+			value->INT.value = (int)value->BOOL.value;
+			return ok;
+		}
+		if (value->type == TYPE_INT && type == "bool")
+		{
+			value->type = TYPE_BOOL;
+			value->BOOL.value = (bool)value->INT.value;
+			return data_loss;
+		}
+		if (value->type == TYPE_FLOAT && type == "bool")
+		{
+			value->type = TYPE_BOOL;
+			value->BOOL.value = (bool)value->FLOAT.value;
+			return data_loss;
+		}
+		if (value->type == TYPE_BOOL && type == "float")
+		{
+			value->type = TYPE_FLOAT;
+			value->FLOAT.value = (float)value->BOOL.value;
+			return ok;
+		}
+
+		return error;
+	}
+
+	std::shared_ptr<AST_Node> create_var(std::string name, std::shared_ptr<AST_Node> value, std::shared_ptr<AST_Node> type = nullptr)
+	{
+		auto var = std::make_shared<AST_Node>(TYPE_VAR);
+		var->VAR.name = name;
+		var->VAR.value = value;
+
+		if (type)
+		{
+			var->VAR.type = type;
+		}
+		else
+		{
+			var->VAR.type = infer_type(var->VAR.value);
+		}
+
+		return var;
+	}
+
+	std::shared_ptr<AST_Node> get_var_in_scope(std::string name, std::shared_ptr<AST_Node> scope)
+	{
+		auto var = std::make_shared<AST_Node>(TYPE_VAR);
+
+		for (auto data : scope->SCOPE.data)
+		{
+			if (data->type == TYPE_VAR && data->VAR.name == name)
+			{
+				return data;
+			}
+		}
+
+		return nullptr;
+	}
+
+	void eval(std::shared_ptr<AST_Node> node)
 	{
 		if (!node)
 		{
-			node = std::make_shared<Node>(TYPE_ERROR);
+			node = std::make_shared<AST_Node>(TYPE_ERROR);
 			return;
 		}
 
 		switch (node->type)
 		{
 		case TYPE_INT:
-			node->type_type = "int";
 			return;
 		case TYPE_FLOAT:
-			node->type_type = "float";
 			return;
 		case TYPE_BOOL:
-			node->type_type = "bool";
 			return;
 		case TYPE_STRING:
-			node->type_type = "string";
 			return;
 		case TYPE_LIST:
-			node->type_type = "list";
 			return;
 		case TYPE_TYPE:
-			node->type_type = "type";
 			return;
 		case TYPE_ID:
 			eval_id(node);
@@ -113,7 +207,7 @@ public:
 			eval_scope_accessor(node);
 			return;
 		case TYPE_COLON:
-			eval_type_assignment(node);
+			//eval_type_assignment(node);
 			return;
 		case TYPE_CALL:
 			eval_call(node);
@@ -123,7 +217,7 @@ public:
 
 	// ########### PLUS ########### //
 
-	void eval_plus(std::shared_ptr<Node> node)
+	void eval_plus(std::shared_ptr<AST_Node> node)
 	{
 		eval(node->left);
 		eval(node->right);
@@ -143,19 +237,19 @@ public:
 		if (node->left->type == TYPE_INT && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->int_value + node->right->int_value;
+			node->INT.value = node->left->INT.value + node->right->INT.value;
 		}
 		// plus int, float
 		else if (node->left->type == TYPE_INT && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->int_value + node->right->float_value;
+			node->FLOAT.value = node->left->INT.value + node->right->FLOAT.value;
 		}
 		// plus int, bool
 		else if (node->left->type == TYPE_INT && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->int_value + node->right->bool_value;
+			node->INT.value = node->left->INT.value + node->right->BOOL.value;
 		}
 
 		//---- FLOAT ----//
@@ -164,19 +258,19 @@ public:
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value + node->right->int_value;
+			node->FLOAT.value = node->left->FLOAT.value + node->right->INT.value;
 		}
 		// plus float, float
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value + node->right->float_value;
+			node->FLOAT.value = node->left->FLOAT.value + node->right->FLOAT.value;
 		}
 		// plus float, bool
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value + node->right->bool_value;
+			node->FLOAT.value = node->left->FLOAT.value + node->right->BOOL.value;
 		}
 
 		//---- LIST ----//
@@ -185,13 +279,13 @@ public:
 		else if (node->left->type == TYPE_LIST && node->right->type == TYPE_LIST)
 		{
 			node->type = TYPE_LIST;
-			for (auto& item : node->left->list_items)
+			for (auto& item : node->left->LIST.items)
 			{
-				node->list_items.push_back(item);
+				node->LIST.items.push_back(item);
 			}
-			for (auto& item : node->right->list_items)
+			for (auto& item : node->right->LIST.items)
 			{
-				node->list_items.push_back(item);
+				node->LIST.items.push_back(item);
 			}
 		}
 
@@ -202,8 +296,8 @@ public:
 		{
 			node->type = TYPE_STRING;
 			std::shared_ptr<std::string> string = std::make_shared<std::string>();
-			*string = *node->left->string_value + *node->right->string_value;
-			node->string_value = string;
+			*string = node->left->STRING.value + node->right->STRING.value;
+			node->STRING.value = *string;
 		}
 
 		//---- BOOL ----//
@@ -212,19 +306,19 @@ public:
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->bool_value + node->right->int_value;
+			node->INT.value = node->left->BOOL.value + node->right->INT.value;
 		}
 		// plus bool, float
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->bool_value + node->right->float_value;
+			node->FLOAT.value = node->left->BOOL.value + node->right->FLOAT.value;
 		}
 		// plus bool, bool
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->bool_value + node->right->bool_value;
+			node->INT.value = node->left->BOOL.value + node->right->BOOL.value;
 		}
 
 		else
@@ -236,7 +330,7 @@ public:
 
 	// ########### MINUS ########### //
 
-	void eval_minus(std::shared_ptr<Node> node)
+	void eval_minus(std::shared_ptr<AST_Node> node)
 	{
 		eval(node->left);
 		eval(node->right);
@@ -256,13 +350,13 @@ public:
 		if (node->left->type == TYPE_INT && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->int_value - node->right->int_value;
+			node->INT.value = node->left->INT.value - node->right->INT.value;
 		}
 		// minus int, float
 		else if (node->left->type == TYPE_INT && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->int_value - node->right->float_value;
+			node->FLOAT.value = node->left->INT.value - node->right->FLOAT.value;
 		}
 		// minus int, string
 		else if (node->left->type == TYPE_INT && node->right->type == TYPE_STRING)
@@ -271,26 +365,26 @@ public:
 
 			std::shared_ptr<std::string> string = std::make_shared<std::string>();
 
-			int str_len = (*node->right->string_value).size();
+			int str_len = (node->right->STRING.value).size();
 
-			if (node->left->int_value > str_len)
+			if (node->left->INT.value > str_len)
 			{
 				node->type = TYPE_ERROR;
 				return;
 			}
 
-			for (int i = node->left->int_value; i < str_len; i++)
+			for (int i = node->left->INT.value; i < str_len; i++)
 			{
-				*string = *string + (*node->right->string_value)[i];
+				*string = *string + (node->right->STRING.value)[i];
 			}
 
-			node->string_value = string;
+			node->STRING.value = *string;
 		}
 		// minus int, bool
 		else if (node->left->type == TYPE_INT && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->int_value - node->right->bool_value;
+			node->INT.value = node->left->INT.value - node->right->BOOL.value;
 		}
 
 		//---- FLOAT ----//
@@ -299,19 +393,19 @@ public:
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value - node->right->int_value;
+			node->FLOAT.value = node->left->FLOAT.value - node->right->INT.value;
 		}
 		// minus float, float
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value - node->right->float_value;
+			node->FLOAT.value = node->left->FLOAT.value - node->right->FLOAT.value;
 		}
 		// minus float, bool
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value - node->right->bool_value;
+			node->FLOAT.value = node->left->FLOAT.value - node->right->BOOL.value;
 		}
 
 		//---- LIST ----//
@@ -325,7 +419,7 @@ public:
 
 			std::shared_ptr<std::string> string = std::make_shared<std::string>();
 
-			int str_len = (*node->left->string_value).size() - node->right->int_value;
+			int str_len = (node->left->STRING.value).size() - node->right->INT.value;
 
 			if (str_len < 0)
 			{
@@ -335,10 +429,10 @@ public:
 
 			for (int i = 0; i < str_len; i++)
 			{
-				*string = *string + (*node->left->string_value)[i];
+				*string = *string + (node->left->STRING.value)[i];
 			}
 
-			node->string_value = string;
+			node->STRING.value = *string;
 		}
 
 		//---- BOOL ----//
@@ -347,19 +441,19 @@ public:
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->bool_value - node->right->int_value;
+			node->INT.value = node->left->BOOL.value - node->right->INT.value;
 		}
 		// minus bool, float
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->bool_value - node->right->float_value;
+			node->FLOAT.value = node->left->BOOL.value - node->right->FLOAT.value;
 		}
 		// minus bool, bool
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->bool_value - node->right->bool_value;
+			node->INT.value = node->left->BOOL.value - node->right->BOOL.value;
 		}
 
 		else
@@ -370,7 +464,7 @@ public:
 
 	}
 
-	void eval_mul(std::shared_ptr<Node> node)
+	void eval_mul(std::shared_ptr<AST_Node> node)
 	{
 		eval(node->left);
 		eval(node->right);
@@ -390,23 +484,23 @@ public:
 		if (node->left->type == TYPE_INT && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->int_value * node->right->int_value;
+			node->INT.value = node->left->INT.value * node->right->INT.value;
 		}
 		// mul int, float
 		else if (node->left->type == TYPE_INT && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->int_value * node->right->float_value;
+			node->FLOAT.value = node->left->INT.value * node->right->FLOAT.value;
 		}
 		// mul int, list
 		else if (node->left->type == TYPE_INT && node->right->type == TYPE_LIST)
 		{
 			node->type = TYPE_LIST;
-			for (int i = 0; i < node->left->int_value; i++)
+			for (int i = 0; i < node->left->INT.value; i++)
 			{
-				for (auto& item : node->right->list_items)
+				for (auto& item : node->right->LIST.items)
 				{
-					node->list_items.push_back(item);
+					node->LIST.items.push_back(item);
 				}
 			}
 		}
@@ -417,18 +511,18 @@ public:
 
 			std::shared_ptr<std::string> string = std::make_shared<std::string>();
 
-			for (int i = 0; i < node->left->int_value; i++)
+			for (int i = 0; i < node->left->INT.value; i++)
 			{
-				*string = *string + *node->right->string_value;
+				*string = *string + node->right->STRING.value;
 			}
 
-			node->string_value = string;
+			node->STRING.value = *string;
 		}
 		// mul int, bool
 		else if (node->left->type == TYPE_INT && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->int_value * node->right->bool_value;
+			node->INT.value = node->left->INT.value * node->right->BOOL.value;
 		}
 
 		//---- FLOAT ----//
@@ -437,19 +531,19 @@ public:
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value * node->right->int_value;
+			node->FLOAT.value = node->left->FLOAT.value * node->right->INT.value;
 		}
 		// mul float, float
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value * node->right->float_value;
+			node->FLOAT.value = node->left->FLOAT.value * node->right->FLOAT.value;
 		}
 		// mul float, bool
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value * node->right->bool_value;
+			node->FLOAT.value = node->left->FLOAT.value * node->right->BOOL.value;
 		}
 
 		//---- LIST ----//
@@ -458,11 +552,11 @@ public:
 		else if (node->left->type == TYPE_LIST && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_LIST;
-			for (int i = 0; i < node->right->int_value; i++)
+			for (int i = 0; i < node->right->INT.value; i++)
 			{
-				for (auto& item : node->left->list_items)
+				for (auto& item : node->left->LIST.items)
 				{
-					node->list_items.push_back(item);
+					node->LIST.items.push_back(item);
 				}
 			}
 		}
@@ -475,12 +569,12 @@ public:
 
 			std::shared_ptr<std::string> string = std::make_shared<std::string>();
 
-			for (int i = 0; i < node->right->int_value; i++)
+			for (int i = 0; i < node->right->INT.value; i++)
 			{
-				*string = *string + *node->left->string_value;
+				*string = *string + node->left->STRING.value;
 			}
 
-			node->string_value = string;
+			node->STRING.value = *string;
 		}
 
 		//---- BOOL ----//
@@ -489,19 +583,19 @@ public:
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->bool_value * node->right->int_value;
+			node->INT.value = node->left->BOOL.value * node->right->INT.value;
 		}
 		// mul bool, float
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->bool_value * node->right->float_value;
+			node->FLOAT.value = node->left->BOOL.value * node->right->FLOAT.value;
 		}
 		// mul bool, bool
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->bool_value * node->right->bool_value;
+			node->INT.value = node->left->BOOL.value * node->right->BOOL.value;
 		}
 
 		else
@@ -513,7 +607,7 @@ public:
 
 	// ########### DIV ########### //
 
-	void eval_div(std::shared_ptr<Node> node)
+	void eval_div(std::shared_ptr<AST_Node> node)
 	{
 		eval(node->left);
 		eval(node->right);
@@ -533,19 +627,19 @@ public:
 		if (node->left->type == TYPE_INT && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = (float)node->left->int_value / (float)node->right->int_value;
+			node->FLOAT.value = (float)node->left->INT.value / (float)node->right->INT.value;
 		}
 		// div int, float
 		else if (node->left->type == TYPE_INT && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = (float)node->left->int_value / node->right->float_value;
+			node->FLOAT.value = (float)node->left->INT.value / node->right->FLOAT.value;
 		}
 		// div int, bool
 		else if (node->left->type == TYPE_INT && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = (float)node->left->int_value / node->right->bool_value;
+			node->FLOAT.value = (float)node->left->INT.value / node->right->BOOL.value;
 		}
 
 		//---- FLOAT ----//
@@ -554,19 +648,19 @@ public:
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value / node->right->int_value;
+			node->FLOAT.value = node->left->FLOAT.value / node->right->INT.value;
 		}
 		// div float, float
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value / node->right->float_value;
+			node->FLOAT.value = node->left->FLOAT.value / node->right->FLOAT.value;
 		}
 		// div float, bool
 		else if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->float_value / node->right->bool_value;
+			node->FLOAT.value = node->left->FLOAT.value / node->right->BOOL.value;
 		}
 
 		//---- LIST ----//
@@ -579,19 +673,19 @@ public:
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->bool_value / node->right->int_value;
+			node->INT.value = node->left->BOOL.value / node->right->INT.value;
 		}
 		// div bool, float
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = node->left->bool_value / node->right->float_value;
+			node->FLOAT.value = node->left->BOOL.value / node->right->FLOAT.value;
 		}
 		// div bool, bool
 		else if (node->left->type == TYPE_BOOL && node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->left->bool_value / node->right->bool_value;
+			node->INT.value = node->left->BOOL.value / node->right->BOOL.value;
 		}
 
 		else
@@ -603,7 +697,7 @@ public:
 
 	// ########### NEG ########### //
 
-	void eval_neg(std::shared_ptr<Node> node)
+	void eval_neg(std::shared_ptr<AST_Node> node)
 	{
 		eval(node->right);
 
@@ -622,22 +716,22 @@ public:
 		if (node->right->type == TYPE_INT)
 		{
 			node->type = TYPE_INT;
-			node->int_value = -node->right->int_value;
+			node->INT.value = -node->right->INT.value;
 		}
 		// neg float
 		else if (node->right->type == TYPE_FLOAT)
 		{
 			node->type = TYPE_FLOAT;
-			node->float_value = -node->right->float_value;
+			node->FLOAT.value = -node->right->FLOAT.value;
 		}
 		// neg list
 		else if (node->right->type == TYPE_LIST)
 		{
 			node->type = TYPE_LIST;
 
-			for (int i = node->right->list_items.size() - 1; i > 0; i--)
+			for (int i = node->right->LIST.items.size() - 1; i > 0; i--)
 			{
-				node->list_items.push_back(node->right->list_items[i]);
+				node->LIST.items.push_back(node->right->LIST.items[i]);
 			}
 		}
 		// neg string
@@ -646,18 +740,18 @@ public:
 			node->type = TYPE_STRING;
 			std::shared_ptr<std::string> string = std::make_shared<std::string>();
 
-			for (int i = (*node->right->string_value).length() - 1; i > 0; i--)
+			for (int i = (node->right->STRING.value).length() - 1; i > 0; i--)
 			{
-				*string = *string + (*node->right->string_value)[i];
+				*string = *string + (node->right->STRING.value)[i];
 			}
 
-			node->string_value = string;
+			node->STRING.value = *string;
 		}
 		// neg bool
 		else if (node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_INT;
-			node->int_value = -(int)(node->right->bool_value);
+			node->INT.value = -(int)(node->right->BOOL.value);
 		}
 
 		else
@@ -669,7 +763,7 @@ public:
 
 	// ########### POS ########### //
 
-	void eval_pos(std::shared_ptr<Node> node)
+	void eval_pos(std::shared_ptr<AST_Node> node)
 	{
 		eval(node->right);
 
@@ -708,7 +802,7 @@ public:
 		else if (node->right->type == TYPE_BOOL)
 		{
 			node->type = TYPE_INT;
-			node->int_value = node->bool_value;
+			node->INT.value = node->BOOL.value;
 		}
 
 		else
@@ -739,7 +833,7 @@ public:
 		}
 	}
 
-	void eval_assignment(std::shared_ptr<Node> node)
+	void eval_assignment(std::shared_ptr<AST_Node> node)
 	{
 		eval(node->right);
 
@@ -748,124 +842,26 @@ public:
 			node->type = TYPE_ERROR;
 			return;
 		}
-
-		//TODO: move this to the actual eval functions so it happens earlier and everywhere
-
-		node->right->type_type = type_repr_builtin(node->right->type);
-
-		if (node->left->type != TYPE_ID && node->left->type != TYPE_COLON && node->left->type != TYPE_DOUBLE_COLON)
-		{
-			std::cout << "\n" << log_error(node, "Cannot assign to non-identifier.");
-			node->type = TYPE_ERROR;
-			return;
-		}
-
-		if (node->left->type == TYPE_ID)
-		{
-			std::string var_name = node->left->get_id_value();
-
-			eval_id(node->left, false);
-
-			if (node->left->type == TYPE_EMPTY)
-			{
-				if (node->right->type == TYPE_REF)
-				{
-					current_scope->scope_data[var_name] = { node->right->ref->type_type, node->right->ref };
-					return;
-				}
-
-				// create a copy of the right node and assign it
-				std::shared_ptr<Node> right = create_copy(node->right);
-				current_scope->scope_data[var_name] = { node->right->type_type, right };
-				return;
-			}
-			else
-			{
-				std::string left_type = type_repr_builtin(node->left->type);
-				if (left_type != node->right->type_type)
-				{
-					std::cout << "\n" << log_error(node, "Cannot assign value of type '" + node->right->type_type + "' to variable of type '" + left_type + "'.");
-					node->type = TYPE_ERROR;
-					return;
-				}
-				else
-				{
-					node->left = create_ref(node->right);
-				}
-
-				return;
-			}
-		}
-		else if (node->left->type == TYPE_COLON)
-		{
-			eval(node->left);
-			if (node->left->type == TYPE_ERROR)
-			{
-				node->type = TYPE_ERROR;
-				return;
-			}
-			if (node->left->type_type == "any")
-			{
-				current_scope->scope_data[node->left->get_id_value()] = { node->right->type_type, node->right };
-			}
-			else
-			{
-				current_scope->scope_data[node->left->get_id_value()] = { node->left->type_type, node->right };
-			}
-		}
-		else if (node->left->type == TYPE_DOUBLE_COLON)
-		{
-			eval(node->left);
-
-			if (node->left->type == TYPE_ERROR)
-			{
-				node->type = TYPE_ERROR;
-				return;
-			}
-
-			if (node->left->type_type == "any")
-				current_scope->scope_data[node->left->get_id_value()] = { node->right->type_type, node->right };
-
-			else
-			{
-				if (node->left->type_type != node->right->type_type)
-				{
-					std::cout << "\n" << log_error(node, "Cannot assign value of type '" + node->right->type_type + "' to variable of type '" + node->left->type_type + "'.");
-					node->type = TYPE_ERROR;
-					return;
-				}
-				else
-				{
-					*node->left = *node->right;
-				}
-			}
-			return;
-		}
-		else
-		{
-			node->type = TYPE_ERROR;
-			return;
-		}
 	}
 
 	// ########### BLOCK ########### //
 
-	void eval_block(std::shared_ptr<Node> node)
+	void eval_block(std::shared_ptr<AST_Node> node)
 	{
-		std::shared_ptr<Node> scope;
+		std::shared_ptr<AST_Node> scope;
 
-		if (node->block_name.empty())
+		if (node->BLOCK.name.empty())
 		{
 			scope = new_scope();
 		}
 		else
 		{
-			scope = new_scope(node->block_name);
+			scope = new_scope(node->BLOCK.name);
 		}
 
 		enter_scope(scope);
 
-		for (auto& expr : node->body)
+		for (auto& expr : node->BLOCK.body)
 		{
 			eval(expr);
 		}
@@ -875,13 +871,13 @@ public:
 
 	// ########### DOUBLE_COLON ########### //
 
-	void eval_scope_accessor(std::shared_ptr<Node> node)
+	void eval_scope_accessor(std::shared_ptr<AST_Node> node)
 	{
-		std::shared_ptr<Node> scope;
+		std::shared_ptr<AST_Node> scope;
 
 		if (node->left->type == TYPE_ID)
 		{
-			scope = get_scope(node->left->get_id_value());
+			scope = get_scope(node->left->ID.value);
 		}
 		else if (node->left->type == TYPE_DOUBLE_COLON)
 		{
@@ -896,7 +892,7 @@ public:
 
 		if (!scope)
 		{
-			std::cout << "\n" << log_error(node, "Scope '" + node->left->get_id_value() + "' is not defined in current or outer scopes.");
+			std::cout << "\n" << log_error(node, "Scope '" + node->left->ID.value + "' is not defined in current or outer scopes.");
 			node->type = TYPE_ERROR;
 			return;
 		}
@@ -908,7 +904,7 @@ public:
 			return;
 		}
 
-		std::shared_ptr<Node>& var = get_var_in_scope(node->right, scope);
+		std::shared_ptr<AST_Node> var = get_var_in_scope(node->right->ID.value, scope);
 
 		if (var)
 		{
@@ -918,7 +914,8 @@ public:
 
 		if (!var)
 		{
-			std::cout << "\n" << log_error(node, "'" + node->right->get_id_value() + "' is not defined in scope '" + scope->scope_name + "'.");
+			std::cout << "\n" << log_error(node, "'" + node->right->ID.value + "' is not defined in scope '" + 
+				scope->SCOPE.name + "'.");
 			node->type = TYPE_ERROR;
 			return;
 		}
@@ -926,247 +923,181 @@ public:
 
 	// ########### SCOPE ########### //
 
-	std::shared_ptr<Node> new_scope(std::string name = "")
+	std::shared_ptr<AST_Node> new_scope(std::string name = "")
 	{
 		__scopes_num++;
-		std::shared_ptr<Node> scope = std::make_shared<Node>(TYPE_SCOPE);
+		std::shared_ptr<AST_Node> scope = std::make_shared<AST_Node>(TYPE_SCOPE);
 		if (name.length() == 0)
 		{
-			scope->scope_name = std::to_string(__scopes_num);
+			scope->SCOPE.name = std::to_string(__scopes_num);
 		}
 		else
 		{
-			scope->scope_is_named = true;
-			scope->scope_name = name;
+			scope->SCOPE.is_named = true;
+			scope->SCOPE.name = name;
 		}
 
-		scope->scope_parent = current_scope;
-		current_scope->scope_data[scope->scope_name] = { "scope", scope };
+		scope->SCOPE.parent = current_scope;
+		current_scope->SCOPE.data.push_back(scope);
 		return scope;
 	}
 
-	void enter_scope(std::shared_ptr<Node> scope)
+	void enter_scope(std::shared_ptr<AST_Node> scope)
 	{
 		current_scope = scope;
 	}
 
-	void clear_scope(std::shared_ptr<Node> scope)
+	void clear_scope(std::shared_ptr<AST_Node> scope)
 	{
-		scope->scope_data.clear();
+		scope->SCOPE.data.clear();
 	}
 
-	void delete_scope(std::shared_ptr<Node> scope)
+	void delete_scope(std::shared_ptr<AST_Node> scope)
 	{
-		scope->scope_parent->scope_data.erase(scope->scope_name);
+		auto& data = scope->SCOPE.parent->SCOPE.data;
+
+		for (int i = 0; i < data.size(); i++)
+		{
+			if (data[i] == scope)
+			{
+				data.erase(data.begin() + i);
+				return;
+			}
+		}
 	}
 
 	void exit_scope()
 	{
-		if (!current_scope->scope_is_named)
+		if (!current_scope->SCOPE.is_named)
 		{
 			clear_scope(current_scope);
 			delete_scope(current_scope);
 		}
-		current_scope = current_scope->scope_parent;
+		current_scope = current_scope->SCOPE.parent;
 	}
 
-	std::shared_ptr<Node>& get_scope(std::string scope_name)
+	std::shared_ptr<AST_Node> get_scope(std::string name)
 	{
-		std::shared_ptr<Node> scope = current_scope;
+		auto scope = current_scope;
 
-		std::shared_ptr<Node>& searched_scope = scope->scope_data[scope_name].second;
+		auto searched_scope = get_scope_in_scope(name, scope);
 
 		while (!searched_scope)
 		{
-			scope = scope->scope_parent;
+			scope = scope->SCOPE.parent;
 
 			if (scope == nullptr)
 			{
-				return searched_scope;
+				return nullptr;
 			}
 
-			searched_scope = scope->scope_data[scope_name].second;
+			searched_scope = get_scope_in_scope(name, scope);
 		}
 
 		return searched_scope;
 	}
 
-	std::shared_ptr<Node>& get_scope_in_scope(std::shared_ptr<Node> id, std::shared_ptr<Node>& scope)
+	std::shared_ptr<AST_Node> get_scope_in_scope(std::string name, std::shared_ptr<AST_Node> scope)
 	{
-		std::shared_ptr<Node>& searched_scope = scope->scope_data[id->get_id_value()].second;
-		return searched_scope;
+		for (auto data : scope->SCOPE.data)
+		{
+			if (data->type == TYPE_SCOPE && data->SCOPE.name == name)
+			{
+				return data;
+			}
+		}
+
+		return nullptr;
 	}
 
 	// ########### ID ########### //
 
-	std::shared_ptr<Variable> get_var(std::shared_ptr<Node> node)
+	std::shared_ptr<AST_Node> get_var(std::string name)
 	{
-		std::shared_ptr<Variable> var_info = std::make_shared<Variable>();
+		auto scope = current_scope;
 
-		var_info->id = node->get_id_value();
-
-		std::shared_ptr<Node> scope = current_scope;
-
-		std::shared_ptr<Node>& var = scope->scope_data[node->get_id_value()].second;
+		auto var = get_var_in_scope(name, scope);
 
 		while (!var)
 		{
-			scope = scope->scope_parent;
+			scope = scope->SCOPE.parent;
 
 			if (scope == nullptr)
 			{
-				var_info->not_found = true;
-				return var_info;
+				return nullptr;
 			}
 
-			var = scope->scope_data[node->get_id_value()].second;
+			var = get_var_in_scope(name, scope);
 		}
 
-		var_info->id = node->get_id_value();
-		var_info->scope = scope;
-		return var_info;
-	}
-
-	std::shared_ptr<Node>& get_var_in_scope(std::shared_ptr<Node> node, std::shared_ptr<Node>& scope)
-	{
-		std::shared_ptr<Node>& var = scope->scope_data[node->get_id_value()].second;
 		return var;
 	}
 
-	void eval_id(std::shared_ptr<Node> node, bool standalone = true)
+	std::shared_ptr<AST_Node> get_var_in_scope(std::string name, std::shared_ptr<AST_Node> scope)
 	{
-		std::shared_ptr<Variable> var_info = get_var(node);
-
-		// if called on its own, it errors if var doesn't exist. In cases such as assignment, standalone should be
-		// false in order to return an EMPTY if it doesn't exist.
-
-		if (standalone)
+		for (auto data : scope->SCOPE.data)
 		{
-			if (var_info->not_found)
+			if (data->type == TYPE_VAR && data->VAR.name == name)
 			{
-				std::cout << "\n" << log_error(node, "Variable '" + node->get_id_value() + "' is not defined in current or outer scopes.");
-				node->type = TYPE_ERROR;
-			}
-			else
-			{
-				node = var_info->scope->scope_data[var_info->id].second;
+				return data;
 			}
 		}
 
-		else
-		{
-			if (var_info->not_found)
-			{
-				node->type = TYPE_EMPTY;
-			}
-			else
-			{
-				node = var_info->scope->scope_data[var_info->id].second;
-			}
-		}
+		return nullptr;
+	}
+
+	void eval_id(std::shared_ptr<AST_Node> node, bool standalone = true)
+	{
+		return;
 	}
 
 	// ########### TYPE ASSIGNMENT ########### //
 
-	bool get_type(std::string type)
+
+	void eval_call(std::shared_ptr<AST_Node> node)
 	{
-		std::shared_ptr<Node> scope = current_scope;
-
-		while (!std::count(scope->scope_types.begin(), scope->scope_types.end(), type))
+		if (node->CALL.name == "print")
 		{
-			scope = scope->scope_parent;
-			if (scope == nullptr)
-			{
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	void eval_type_assignment(std::shared_ptr<Node> node)
-	{
-		if (node->left->type != TYPE_ID && node->right->type != TYPE_ID)
-		{
-			std::cout << "\n" << log_error(node, "Cannot assign type to non-identifier.");
-			node->type = TYPE_ERROR;
-		}
-
-		std::string type = node->right->get_id_value();
-
-		bool type_exists = get_type(type);
-
-		if (type_exists)
-		{
-			node->left->type_type = type;
-			node = node->left;
-			return;
-		}
-		else
-		{
-			std::cout << "\n" << log_error(node, "Type '" + type + "' is undefined.");
-			node->type = TYPE_ERROR;
-			return;
-		}
-	}
-
-	void eval_call(std::shared_ptr<Node> node)
-	{
-		if (*node->call_name == "print")
-		{
-			for (auto& arg : node->args)
+			for (auto& arg : node->CALL.args)
 			{
 				eval(arg);
-				print_node(arg);
+				//print_ast_node(arg);
 			}
 
 			return;
 		}
 
-		if (*node->call_name == "type_of")
+		if (node->CALL.name == "type_of")
 		{
-			if (node->args.size() != 1)
-			{
-				node->type = TYPE_ERROR;
-				std::cout << "\n" + log_error(node, "Built-in function 'type_of' only accepts one argument.");
-				return;
-			}
-
-			auto& arg = node->args[0];
-
-			eval(arg);
-			node->type = TYPE_TYPE;
-			node->type_type = arg->type_type;
-
 			return;
 		}
 
-		if (*node->call_name == "str")
+		if (node->CALL.name == "str")
 		{
-			if (node->args.size() != 1)
+			if (node->CALL.args.size() != 1)
 			{
 				node->type = TYPE_ERROR;
 				std::cout << "\n" + log_error(node, "Built-in function 'str' only accepts one argument.");
 				return;
 			}
 
-			auto& arg = node->args[0];
+			auto& arg = node->CALL.args[0];
 
 			eval(arg);
 
 			if (arg->type == TYPE_INT)
 			{
-				node->string_value = std::make_shared<std::string>(std::to_string(arg->int_value));
+				node->STRING.value = std::to_string(arg->INT.value);
 				node->type = TYPE_STRING;
 			}
 			else if (arg->type == TYPE_FLOAT)
 			{
-				node->string_value = std::make_shared<std::string>(std::to_string(arg->float_value));
+				node->STRING.value = std::to_string(arg->FLOAT.value);
 				node->type = TYPE_STRING;
 			}
 			else if (arg->type == TYPE_BOOL)
 			{
-				node->string_value = std::make_shared<std::string>(std::to_string(arg->bool_value));
+				node->STRING.value = std::to_string(arg->BOOL.value);
 				node->type = TYPE_STRING;
 			}
 			else
@@ -1177,34 +1108,34 @@ public:
 			return;
 		}
 
-		if (*node->call_name == "ref")
+		if (node->CALL.name == "ref")
 		{
-			if (node->args.size() != 1)
+			if (node->CALL.args.size() != 1)
 			{
 				node->type = TYPE_ERROR;
 				std::cout << "\n" + log_error(node, "Built-in function 'ref' only accepts one argument.");
 				return;
 			}
 
-			auto& arg = node->args[0];
+			auto& arg = node->CALL.args[0];
 
 			eval(arg);
 
 			node->type = TYPE_REF;
-			node->ref = arg;
+			node->REF.ref = arg;
 			return;
 		}
 
-		if (*node->call_name == "import")
+		if (node->CALL.name == "import")
 		{
-			if (node->args.size() != 1)
+			if (node->CALL.args.size() != 1)
 			{
 				node->type = TYPE_ERROR;
 				std::cout << "\n" + log_error(node, "Built-in function 'import' only accepts one argument.");
 				return;
 			}
 
-			auto& arg = node->args[0];
+			auto& arg = node->CALL.args[0];
 
 			if (arg->type != TYPE_STRING)
 			{
@@ -1213,7 +1144,7 @@ public:
 				return;
 			}
 
-			Lexer lexer(*arg->string_value);
+			Lexer lexer(arg->STRING.value);
 			if (lexer.get_source().size() == 0)
 			{
 				node->type = TYPE_ERROR;
@@ -1223,10 +1154,10 @@ public:
 
 			lexer.tokenize();
 
-			Parser parser(lexer);
+			AST_Parser parser(lexer);
 			parser.parse();
 
-			Eval eval;
+			AST_Eval eval;
 
 			eval.init();
 

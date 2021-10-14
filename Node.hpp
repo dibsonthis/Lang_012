@@ -136,3 +136,14 @@ struct Node
 		}
 	}
 };
+
+std::shared_ptr<Node> create_ref(std::shared_ptr<Node> n)
+{
+	return n;
+}
+
+std::shared_ptr<Node> create_copy(std::shared_ptr<Node> n)
+{
+	std::shared_ptr<Node> r = std::make_shared<Node>(*n);
+	return r;
+}
