@@ -70,6 +70,9 @@ public:
 		case TYPE_TYPE:
 			type->TYPE.name = "type";
 			return type;
+		case TYPE_VAR:
+			type = infer_type(node->VAR.value);
+			return type;
 		default:
 			type->TYPE.built_in = false;
 			return type;
@@ -800,25 +803,6 @@ public:
 
 	// ########### ASSIGNMENT ########### //
 
-	std::string type_repr_builtin(Type type)
-	{
-		switch (type)
-		{
-		case TYPE_INT:
-			return "int";
-		case TYPE_FLOAT:
-			return "float";
-		case TYPE_BOOL:
-			return "bool";
-		case TYPE_STRING:
-			return "string";
-		case TYPE_SCOPE:
-			return "scope";
-		default:
-			return "undefined";
-		}
-	}
-
 	void eval_assignment(std::shared_ptr<AST_Node>& node)
 	{
 		eval(node->right);
@@ -833,11 +817,47 @@ public:
 
 		if (node->left->type == TYPE_ID)
 		{
-			std::shared_ptr<AST_Node> var = std::make_shared<AST_Node>(TYPE_VAR);
-			var->VAR.name = node->left->ID.value;
-			var->VAR.value = node->right;
-			var->VAR.type = infer_type(node->right);
-			current_scope->SCOPE.data.push_back(var);
+			std::shared_ptr<AST_Node> var = get_var(node->left->ID.value);
+			if (var)
+			{
+				// do type_check
+				auto right_type = infer_type(node->right);
+				if (var->VAR.type == right_type)
+				{
+					var->VAR.value = node->right;
+					var->VAR.type = right_type;
+				}
+				else
+				{
+					int impl_cast = implicit_cast(node->right, var->VAR.type->TYPE.name);
+
+					if (impl_cast == 0)
+					{
+						var->VAR.value = node->right;
+						var->VAR.type = infer_type(node->right);
+					}
+					else if (impl_cast == 1)
+					{
+						var->VAR.value = node->right;
+						var->VAR.type = infer_type(node->right);
+						std::cout << "\n" << "Warning: Potential data loss...";
+					}
+					else
+					{
+						std::cout << "\n" << log_error(node, "Cannot assign value of type '" + right_type->TYPE.name + "' to variable of type '" + var->VAR.type->TYPE.name + "'.");
+						node->type = TYPE_ERROR;
+						return;
+					}
+				}
+			}
+			else
+			{
+				var = std::make_shared<AST_Node>(TYPE_VAR);
+				var->VAR.name = node->left->ID.value;
+				var->VAR.value = node->right;
+				var->VAR.type = infer_type(node->right);
+				current_scope->SCOPE.data.push_back(var);
+			}
 		}
 	}
 

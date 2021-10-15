@@ -1,4 +1,9 @@
 x = 45.5 * 2;
 print("\n", "x is ", x);
 
-print(y);
+y = x;
+y = 18;
+y = "hello";
+
+print("\n", "x is ", x);
+print("\n", "y is ", y);
