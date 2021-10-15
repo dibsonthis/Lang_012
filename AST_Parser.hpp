@@ -193,7 +193,7 @@ public:
 
 	std::shared_ptr<AST_Node> parse_expression(std::vector<std::shared_ptr<AST_Node>> raw_expression)
 	{
-#define ADVANCE() node = raw_expression[++index]
+		#define ADVANCE() node = raw_expression[++index]
 
 		std::shared_ptr<AST_Node> node = raw_expression[0];
 		int index = 0;

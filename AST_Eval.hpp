@@ -143,6 +143,40 @@ public:
 		return var;
 	}
 
+	std::shared_ptr<AST_Node> get_data(std::string name)
+	{
+		auto scope = current_scope;
+
+		auto var = get_data_from_scope(name, scope);
+
+		while (!var)
+		{
+			scope = scope->SCOPE.parent;
+
+			if (scope == nullptr)
+			{
+				return var;
+			}
+
+			var = get_data_from_scope(name, scope);
+		}
+
+		return var;
+	}
+
+	std::shared_ptr<AST_Node> get_data_from_scope(std::string name, std::shared_ptr<AST_Node> scope)
+	{
+		for (auto& data : scope->SCOPE.data)
+		{
+			if (data->VAR.name == name)
+			{
+				return data;
+			}
+		}
+
+		return nullptr;
+	}
+
 	void eval(std::shared_ptr<AST_Node>& node)
 	{
 		if (!node)
@@ -813,11 +847,45 @@ public:
 			return;
 		}
 
-		eval(node->right);
-
-		if (node->left->type == TYPE_ID)
+		if (node->left->type == TYPE_DOUBLE_COLON)
 		{
-			std::shared_ptr<AST_Node> var = get_var(node->left->ID.value);
+			eval_scope_accessor(node->left);
+
+			// do type_check
+			auto right_type = infer_type(node->right);
+			if (node->left->VAR.type->TYPE.name == right_type->TYPE.name)
+			{
+				node->left->VAR.value = node->right;
+				node->left->VAR.type = right_type;
+			}
+			else
+			{
+				int impl_cast = implicit_cast(node->right, node->left->VAR.type->TYPE.name);
+
+				if (impl_cast == 0)
+				{
+					node->left->VAR.value = node->right;
+					node->left->VAR.type = infer_type(node->right);
+				}
+				else if (impl_cast == 1)
+				{
+					node->left->VAR.value = node->right;
+					node->left->VAR.type = infer_type(node->right);
+					std::cout << "\n" << "Warning: Potential data loss...";
+				}
+				else
+				{
+					std::cout << "\n" << log_error(node, "Cannot assign value of type '" + right_type->TYPE.name + "' to variable of type '" + node->left->VAR.type->TYPE.name + "'.");
+					node->type = TYPE_ERROR;
+					return;
+				}
+			}
+
+		}
+
+		else if (node->left->type == TYPE_ID)
+		{
+			std::shared_ptr<AST_Node> var = get_data(node->left->ID.value);
 			if (var)
 			{
 				// do type_check
@@ -894,7 +962,8 @@ public:
 
 		if (node->left->type == TYPE_ID)
 		{
-			scope = get_scope(node->left->ID.value);
+			auto data = get_data(node->left->ID.value);
+			scope = data->VAR.value;
 		}
 		else if (node->left->type == TYPE_DOUBLE_COLON)
 		{
@@ -921,15 +990,7 @@ public:
 			return;
 		}
 
-		std::shared_ptr<AST_Node> var = get_var_in_scope(node->right->ID.value, scope);
-
-		if (var)
-		{
-			node = var;
-			return;
-		}
-
-		var = get_scope_in_scope(node->right->ID.value, scope);
+		std::shared_ptr<AST_Node> var = get_data_from_scope(node->right->ID.value, scope);
 
 		if (var)
 		{
@@ -963,7 +1024,15 @@ public:
 		}
 
 		scope->SCOPE.parent = current_scope;
-		current_scope->SCOPE.data.push_back(scope);
+
+		std::shared_ptr<AST_Node> scope_var = std::make_shared<AST_Node>(TYPE_VAR);
+		scope_var->VAR.value = scope;
+		scope_var->VAR.name = scope->SCOPE.name;
+		std::shared_ptr<AST_Node> scope_var_type = std::make_shared<AST_Node>(TYPE_TYPE);
+		scope_var_type->TYPE.name = "scope";
+		scope_var->VAR.type = scope_var_type;
+
+		current_scope->SCOPE.data.push_back(scope_var);
 		return scope;
 	}
 
@@ -1001,79 +1070,11 @@ public:
 		current_scope = current_scope->SCOPE.parent;
 	}
 
-	std::shared_ptr<AST_Node> get_scope(std::string name)
-	{
-		auto scope = current_scope;
-
-		auto searched_scope = get_scope_in_scope(name, scope);
-
-		while (!searched_scope)
-		{
-			scope = scope->SCOPE.parent;
-
-			if (scope == nullptr)
-			{
-				return nullptr;
-			}
-
-			searched_scope = get_scope_in_scope(name, scope);
-		}
-
-		return searched_scope;
-	}
-
-	std::shared_ptr<AST_Node> get_scope_in_scope(std::string name, std::shared_ptr<AST_Node> scope)
-	{
-		for (auto data : scope->SCOPE.data)
-		{
-			if (data->type == TYPE_SCOPE && data->SCOPE.name == name)
-			{
-				return data;
-			}
-		}
-
-		return nullptr;
-	}
-
 	// ########### ID ########### //
-
-	std::shared_ptr<AST_Node> get_var(std::string name)
-	{
-		auto scope = current_scope;
-
-		auto var = get_var_in_scope(name, scope);
-
-		while (!var)
-		{
-			scope = scope->SCOPE.parent;
-
-			if (scope == nullptr)
-			{
-				return nullptr;
-			}
-
-			var = get_var_in_scope(name, scope);
-		}
-
-		return var;
-	}
-
-	std::shared_ptr<AST_Node> get_var_in_scope(std::string name, std::shared_ptr<AST_Node> scope)
-	{
-		for (auto data : scope->SCOPE.data)
-		{
-			if (data->type == TYPE_VAR && data->VAR.name == name)
-			{
-				return data;
-			}
-		}
-
-		return nullptr;
-	}
 
 	void eval_id(std::shared_ptr<AST_Node>& node, bool standalone = true)
 	{
-		std::shared_ptr<AST_Node> var = get_var(node->ID.value);
+		std::shared_ptr<AST_Node> var = get_data(node->ID.value);
 
 		if (standalone)
 		{
@@ -1152,6 +1153,13 @@ public:
 
 			auto& arg = node->CALL.args[0];
 
+			if (arg->type != TYPE_STRING)
+			{
+				arg->type = TYPE_ERROR;
+				std::cout << "\n" + log_error(arg, "Built-in function 'import' expects a string argument.");
+				return;
+			}
+
 			call_str(arg);
 			node = arg;
 		}
@@ -1185,43 +1193,8 @@ public:
 
 			auto& arg = node->CALL.args[0];
 
-			if (arg->type != TYPE_STRING)
-			{
-				node->type = TYPE_ERROR;
-				std::cout << "\n" + log_error(node, "Built-in function 'import' expects a string argument.");
-				return;
-			}
-
-			Lexer lexer(arg->STRING.value);
-			if (lexer.get_source().size() == 0)
-			{
-				node->type = TYPE_ERROR;
-				std::cout << "\n" + log_error(node, "Cannot import empty file.");
-				return;
-			}
-
-			lexer.tokenize();
-
-			AST_Parser parser(lexer);
-			parser.parse();
-
-			AST_Eval eval;
-
-			eval.init();
-
-			if (parser.expressions.size() == 0)
-			{
-				std::cin.get();
-				return;
-			}
-
-			for (auto expr : parser.expressions)
-			{
-				eval.eval(expr);
-			}
-
-			*node = *eval.global_scope;
-			return;
+			call_import(arg);
+			node = arg;
 		}
 	}
 
@@ -1250,6 +1223,41 @@ public:
 			arg = arg->VAR.value;
 		}
 
+		return;
+	}
+
+	void call_import(std::shared_ptr<AST_Node>& arg)
+	{
+		Lexer lexer(arg->STRING.value);
+
+		if (lexer.get_source().size() == 0)
+		{
+			arg->type = TYPE_ERROR;
+			std::cout << "\n" + log_error(arg, "Cannot import empty file.");
+			return;
+		}
+
+		lexer.tokenize();
+
+		AST_Parser parser(lexer);
+		parser.parse();
+
+		AST_Eval eval;
+
+		eval.init();
+
+		if (parser.expressions.size() == 0)
+		{
+			std::cin.get();
+			return;
+		}
+
+		for (auto expr : parser.expressions)
+		{
+			eval.eval(expr);
+		}
+
+		*arg = *eval.global_scope;
 		return;
 	}
 };

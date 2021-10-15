@@ -1,35 +1,15 @@
-
-
 /*
-x = 45.5 * 2;
-print("\n", "x is ", x);
-
-y = x;
-y = 18;
-y = "hello";
-
-print("\n", "x is ", x);
-print("\n", "y is ", y);
-
+Person = import("person.txt");
+Person::name = "Henri";
+print("\n", Person::name);
+print("\n", import("person.txt")::name);
 */
 
-
-Scope
+Person
 {
-	Inner_1
-	{
-		x = 12;
-	}
-
-	Inner_2
-	{
-		x = "Goodbye World";
-	}
+	name = "Jane";
 }
 
-//print(Scope::Inner_1::x, "...", Scope::Inner_2::x);
-
-//print(type_of(Scope::Inner_2::x));
-
-x = str(12);
-print(x, "\n", type_of(x));
+print("\n", Person::name);
+Person::name = "Henri";
+print("\n", Person::name);
