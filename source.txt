@@ -7,9 +7,20 @@ print("\n", import("person.txt")::name);
 
 Person
 {
-	name = "Jane";
+	name = "Henri";
+	age = 44;
+
+	Hobbies
+	{
+		a = "Cycling";
+		b = "Bowling";
+		c = "Juggling";
+	}
 }
 
 print("\n", Person::name);
-Person::name = "Henri";
-print("\n", Person::name);
+print("\n", Person::age);
+print("\n", "Hobbies:");
+print("\n\t", Person::Hobbies::a);
+print("\n\t", Person::Hobbies::b);
+print("\n\t", Person::Hobbies::c);

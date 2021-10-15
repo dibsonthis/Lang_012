@@ -70,6 +70,9 @@ public:
 		case TYPE_TYPE:
 			type->TYPE.name = "type";
 			return type;
+		case TYPE_SCOPE:
+			type->TYPE.name = "scope";
+			return type;
 		case TYPE_VAR:
 			type = infer_type(node->VAR.value);
 			return type;
@@ -958,7 +961,7 @@ public:
 
 	void eval_scope_accessor(std::shared_ptr<AST_Node>& node)
 	{
-		std::shared_ptr<AST_Node> scope;
+		std::shared_ptr<AST_Node> scope = nullptr;
 
 		if (node->left->type == TYPE_ID)
 		{
@@ -983,11 +986,9 @@ public:
 			return;
 		}
 
-		if (scope->type != TYPE_ID && scope->type != TYPE_SCOPE)
+		if (scope->type == TYPE_VAR)
 		{
-			std::cout << "\n" << log_error(node, "Scope must be an identifier or scope.");
-			node->type = TYPE_ERROR;
-			return;
+			scope = scope->VAR.value;
 		}
 
 		std::shared_ptr<AST_Node> var = get_data_from_scope(node->right->ID.value, scope);
