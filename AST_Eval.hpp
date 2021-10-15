@@ -1,9 +1,10 @@
 #pragma once
 
 #include "AST_Parser.hpp"
+#include "AST_Utils.hpp"
 #include "Type.hpp"
 
-std::string not_implemented_error(std::shared_ptr<AST_Node> op)
+std::string not_implemented_error(std::shared_ptr<AST_Node>& op)
 {
 	if (op->left == nullptr)
 	{
@@ -29,7 +30,7 @@ public:
 	std::shared_ptr<AST_Node> global_scope = std::make_shared<AST_Node>(TYPE_SCOPE);
 	std::shared_ptr<AST_Node>& current_scope = global_scope;
 
-	std::string log_error(std::shared_ptr<AST_Node> error_node, std::string message)
+	std::string log_error(std::shared_ptr<AST_Node>& error_node, std::string message)
 	{
 		std::string error_message = "[Eval] Evaluation Error in '" + file_name + "' @ (" + std::to_string(error_node->line) + ", " + std::to_string(error_node->column) + "): " + message;
 		errors.push_back(error_message);
@@ -45,7 +46,7 @@ public:
 		};
 	}
 
-	std::shared_ptr<AST_Node> infer_type(std::shared_ptr<AST_Node> node)
+	std::shared_ptr<AST_Node> infer_type(std::shared_ptr<AST_Node>& node)
 	{
 		std::shared_ptr<AST_Node> type = std::make_shared<AST_Node>(TYPE_TYPE);
 
@@ -75,7 +76,7 @@ public:
 		}
 	}
 
-	int implicit_cast(std::shared_ptr<AST_Node> value, std::string type)
+	int implicit_cast(std::shared_ptr<AST_Node>& value, std::string type)
 	{
 		int ok = 0;
 		int data_loss = 1;
@@ -139,22 +140,7 @@ public:
 		return var;
 	}
 
-	std::shared_ptr<AST_Node> get_var_in_scope(std::string name, std::shared_ptr<AST_Node> scope)
-	{
-		auto var = std::make_shared<AST_Node>(TYPE_VAR);
-
-		for (auto data : scope->SCOPE.data)
-		{
-			if (data->type == TYPE_VAR && data->VAR.name == name)
-			{
-				return data;
-			}
-		}
-
-		return nullptr;
-	}
-
-	void eval(std::shared_ptr<AST_Node> node)
+	void eval(std::shared_ptr<AST_Node>& node)
 	{
 		if (!node)
 		{
@@ -217,7 +203,7 @@ public:
 
 	// ########### PLUS ########### //
 
-	void eval_plus(std::shared_ptr<AST_Node> node)
+	void eval_plus(std::shared_ptr<AST_Node>& node)
 	{
 		eval(node->left);
 		eval(node->right);
@@ -330,7 +316,7 @@ public:
 
 	// ########### MINUS ########### //
 
-	void eval_minus(std::shared_ptr<AST_Node> node)
+	void eval_minus(std::shared_ptr<AST_Node>& node)
 	{
 		eval(node->left);
 		eval(node->right);
@@ -464,7 +450,7 @@ public:
 
 	}
 
-	void eval_mul(std::shared_ptr<AST_Node> node)
+	void eval_mul(std::shared_ptr<AST_Node>& node)
 	{
 		eval(node->left);
 		eval(node->right);
@@ -607,7 +593,7 @@ public:
 
 	// ########### DIV ########### //
 
-	void eval_div(std::shared_ptr<AST_Node> node)
+	void eval_div(std::shared_ptr<AST_Node>& node)
 	{
 		eval(node->left);
 		eval(node->right);
@@ -697,7 +683,7 @@ public:
 
 	// ########### NEG ########### //
 
-	void eval_neg(std::shared_ptr<AST_Node> node)
+	void eval_neg(std::shared_ptr<AST_Node>& node)
 	{
 		eval(node->right);
 
@@ -763,7 +749,7 @@ public:
 
 	// ########### POS ########### //
 
-	void eval_pos(std::shared_ptr<AST_Node> node)
+	void eval_pos(std::shared_ptr<AST_Node>& node)
 	{
 		eval(node->right);
 
@@ -833,7 +819,7 @@ public:
 		}
 	}
 
-	void eval_assignment(std::shared_ptr<AST_Node> node)
+	void eval_assignment(std::shared_ptr<AST_Node>& node)
 	{
 		eval(node->right);
 
@@ -842,11 +828,22 @@ public:
 			node->type = TYPE_ERROR;
 			return;
 		}
+
+		eval(node->right);
+
+		if (node->left->type == TYPE_ID)
+		{
+			std::shared_ptr<AST_Node> var = std::make_shared<AST_Node>(TYPE_VAR);
+			var->VAR.name = node->left->ID.value;
+			var->VAR.value = node->right;
+			var->VAR.type = infer_type(node->right);
+			current_scope->SCOPE.data.push_back(var);
+		}
 	}
 
 	// ########### BLOCK ########### //
 
-	void eval_block(std::shared_ptr<AST_Node> node)
+	void eval_block(std::shared_ptr<AST_Node>& node)
 	{
 		std::shared_ptr<AST_Node> scope;
 
@@ -871,7 +868,7 @@ public:
 
 	// ########### DOUBLE_COLON ########### //
 
-	void eval_scope_accessor(std::shared_ptr<AST_Node> node)
+	void eval_scope_accessor(std::shared_ptr<AST_Node>& node)
 	{
 		std::shared_ptr<AST_Node> scope;
 
@@ -914,7 +911,7 @@ public:
 
 		if (!var)
 		{
-			std::cout << "\n" << log_error(node, "'" + node->right->ID.value + "' is not defined in scope '" + 
+			std::cout << "\n" << log_error(node, "'" + node->right->ID.value + "' is not defined in scope '" +
 				scope->SCOPE.name + "'.");
 			node->type = TYPE_ERROR;
 			return;
@@ -942,17 +939,17 @@ public:
 		return scope;
 	}
 
-	void enter_scope(std::shared_ptr<AST_Node> scope)
+	void enter_scope(std::shared_ptr<AST_Node>& scope)
 	{
 		current_scope = scope;
 	}
 
-	void clear_scope(std::shared_ptr<AST_Node> scope)
+	void clear_scope(std::shared_ptr<AST_Node>& scope)
 	{
 		scope->SCOPE.data.clear();
 	}
 
-	void delete_scope(std::shared_ptr<AST_Node> scope)
+	void delete_scope(std::shared_ptr<AST_Node>& scope)
 	{
 		auto& data = scope->SCOPE.parent->SCOPE.data;
 
@@ -1046,22 +1043,52 @@ public:
 		return nullptr;
 	}
 
-	void eval_id(std::shared_ptr<AST_Node> node, bool standalone = true)
+	void eval_id(std::shared_ptr<AST_Node>& node, bool standalone = true)
 	{
+		std::shared_ptr<AST_Node> var = get_var(node->ID.value);
+
+		if (standalone)
+		{
+			if (!var)
+			{
+				std::cout << "\n" << log_error(node, "Variable '" + node->ID.value + "' is not defined.");
+				node->type = TYPE_ERROR;
+				return;
+			}
+			else
+			{
+				node = var;
+				return;
+			}
+		}
+		else
+		{
+			if (!var)
+			{
+				node->type = TYPE_EMPTY;
+				return;
+			}
+			else
+			{
+				node = var;
+				return;
+			}
+		}
+
 		return;
 	}
 
 	// ########### TYPE ASSIGNMENT ########### //
 
 
-	void eval_call(std::shared_ptr<AST_Node> node)
+	void eval_call(std::shared_ptr<AST_Node>& node)
 	{
 		if (node->CALL.name == "print")
 		{
 			for (auto& arg : node->CALL.args)
 			{
 				eval(arg);
-				//print_ast_node(arg);
+				print_ast_node(arg);
 			}
 
 			return;
