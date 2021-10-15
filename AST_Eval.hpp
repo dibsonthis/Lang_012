@@ -238,6 +238,9 @@ public:
 		case TYPE_CALL:
 			eval_call(node);
 			return;
+		case TYPE_VAR:
+			eval_var(node);
+			return;
 		}
 	}
 
@@ -247,6 +250,16 @@ public:
 	{
 		eval(node->left);
 		eval(node->right);
+
+		while (node->left->type == TYPE_VAR)
+		{
+			eval_var(node->left);
+		}
+
+		while (node->right->type == TYPE_VAR)
+		{
+			eval_var(node->right);
+		}
 
 		//---- ERROR ----//
 
@@ -360,6 +373,16 @@ public:
 	{
 		eval(node->left);
 		eval(node->right);
+
+		while (node->left->type == TYPE_VAR)
+		{
+			eval_var(node->left);
+		}
+
+		while (node->right->type == TYPE_VAR)
+		{
+			eval_var(node->right);
+		}
 
 		//---- ERROR ----//
 
@@ -494,6 +517,16 @@ public:
 	{
 		eval(node->left);
 		eval(node->right);
+
+		while (node->left->type == TYPE_VAR)
+		{
+			eval_var(node->left);
+		}
+
+		while (node->right->type == TYPE_VAR)
+		{
+			eval_var(node->right);
+		}
 
 		//---- ERROR ----//
 
@@ -638,6 +671,16 @@ public:
 		eval(node->left);
 		eval(node->right);
 
+		while (node->left->type == TYPE_VAR)
+		{
+			eval_var(node->left);
+		}
+
+		while (node->right->type == TYPE_VAR)
+		{
+			eval_var(node->right);
+		}
+
 		//---- ERROR ----//
 
 		if (node->left->type == TYPE_ERROR || node->right->type == TYPE_ERROR)
@@ -727,6 +770,11 @@ public:
 	{
 		eval(node->right);
 
+		while (node->right->type == TYPE_VAR)
+		{
+			eval_var(node->right);
+		}
+
 		//---- ERROR ----//
 
 		if (node->right->type == TYPE_ERROR)
@@ -792,6 +840,11 @@ public:
 	void eval_pos(std::shared_ptr<AST_Node>& node)
 	{
 		eval(node->right);
+
+		while (node->right->type == TYPE_VAR)
+		{
+			eval_var(node->right);
+		}
 
 		//---- ERROR ----//
 
@@ -1073,38 +1126,31 @@ public:
 
 	// ########### ID ########### //
 
-	void eval_id(std::shared_ptr<AST_Node>& node, bool standalone = true)
+	void eval_id(std::shared_ptr<AST_Node>& node)
 	{
 		std::shared_ptr<AST_Node> var = get_data(node->ID.value);
 
-		if (standalone)
+		if (!var)
 		{
-			if (!var)
-			{
-				std::cout << "\n" << log_error(node, "Variable '" + node->ID.value + "' is not defined.");
-				node->type = TYPE_ERROR;
-				return;
-			}
-			else
-			{
-				node = var;
-				return;
-			}
+			std::cout << "\n" << log_error(node, "Variable '" + node->ID.value + "' is not defined.");
+			node->type = TYPE_ERROR;
+			return;
 		}
 		else
 		{
-			if (!var)
-			{
-				node->type = TYPE_EMPTY;
-				return;
-			}
-			else
-			{
-				node = var;
-				return;
-			}
+			node = var;
+			return;
 		}
 
+		return;
+	}
+
+	void eval_var(std::shared_ptr<AST_Node>& node)
+	{
+		while (node->type == TYPE_VAR)
+		{
+			node = node->VAR.value;
+		}
 		return;
 	}
 
