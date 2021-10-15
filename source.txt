@@ -1,3 +1,6 @@
+
+
+/*
 x = 45.5 * 2;
 print("\n", "x is ", x);
 
@@ -7,3 +10,26 @@ y = "hello";
 
 print("\n", "x is ", x);
 print("\n", "y is ", y);
+
+*/
+
+
+Scope
+{
+	Inner_1
+	{
+		x = 12;
+	}
+
+	Inner_2
+	{
+		x = "Goodbye World";
+	}
+}
+
+//print(Scope::Inner_1::x, "...", Scope::Inner_2::x);
+
+//print(type_of(Scope::Inner_2::x));
+
+x = str(12);
+print(x, "\n", type_of(x));

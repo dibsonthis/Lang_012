@@ -822,7 +822,7 @@ public:
 			{
 				// do type_check
 				auto right_type = infer_type(node->right);
-				if (var->VAR.type == right_type)
+				if (var->VAR.type->TYPE.name == right_type->TYPE.name)
 				{
 					var->VAR.value = node->right;
 					var->VAR.type = right_type;
@@ -922,6 +922,14 @@ public:
 		}
 
 		std::shared_ptr<AST_Node> var = get_var_in_scope(node->right->ID.value, scope);
+
+		if (var)
+		{
+			node = var;
+			return;
+		}
+
+		var = get_scope_in_scope(node->right->ID.value, scope);
 
 		if (var)
 		{
@@ -1111,11 +1119,25 @@ public:
 				print_ast_node(arg);
 			}
 
+			node->type = TYPE_EMPTY;
 			return;
 		}
 
 		if (node->CALL.name == "type_of")
 		{
+			if (node->CALL.args.size() != 1)
+			{
+				node->type = TYPE_ERROR;
+				std::cout << "\n" + log_error(node, "Built-in function 'type_of' only accepts one argument.");
+				return;
+			}
+
+			auto& arg = node->CALL.args[0];
+
+			eval(arg);
+
+			node = infer_type(arg);
+
 			return;
 		}
 
@@ -1130,29 +1152,8 @@ public:
 
 			auto& arg = node->CALL.args[0];
 
-			eval(arg);
-
-			if (arg->type == TYPE_INT)
-			{
-				node->STRING.value = std::to_string(arg->INT.value);
-				node->type = TYPE_STRING;
-			}
-			else if (arg->type == TYPE_FLOAT)
-			{
-				node->STRING.value = std::to_string(arg->FLOAT.value);
-				node->type = TYPE_STRING;
-			}
-			else if (arg->type == TYPE_BOOL)
-			{
-				node->STRING.value = std::to_string(arg->BOOL.value);
-				node->type = TYPE_STRING;
-			}
-			else
-			{
-				node = arg;
-			}
-
-			return;
+			call_str(arg);
+			node = arg;
 		}
 
 		if (node->CALL.name == "ref")
@@ -1222,5 +1223,33 @@ public:
 			*node = *eval.global_scope;
 			return;
 		}
+	}
+
+	void call_str(std::shared_ptr<AST_Node>& arg)
+	{
+		eval(arg);
+
+		if (arg->type == TYPE_INT)
+		{
+			arg->STRING.value = std::to_string(arg->INT.value);
+			arg->type = TYPE_STRING;
+		}
+		else if (arg->type == TYPE_FLOAT)
+		{
+			arg->STRING.value = std::to_string(arg->FLOAT.value);
+			arg->type = TYPE_STRING;
+		}
+		else if (arg->type == TYPE_BOOL)
+		{
+			arg->STRING.value = std::to_string(arg->BOOL.value);
+			arg->type = TYPE_STRING;
+		}
+		else if (arg->type == TYPE_VAR)
+		{
+			call_str(arg->VAR.value);
+			arg = arg->VAR.value;
+		}
+
+		return;
 	}
 };
