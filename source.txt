@@ -1,41 +1,15 @@
 
-Person = import("person.txt");
-print("\n", "name: ", Person::name);
-print("\n", "age: ", Person::age);
-print("\n", "height: ", Person::height);
-print("\n", "sex: ", Person::sex);
-print("\n", "fav food: ", Person::fav_food);
-print("\n", "fav drink: ", Person::fav_drink);
-
-Person_2
+def Test(a)
 {
-	name = "Henri";
-	age = 44;
-
-	Hobbies
-	{
-		a = "Cycling";
-		b = "Bowling";
-		c = "Juggling";
-
-		Inner_Hobbies
-		{
-			a1 = "Eating";
-		}
-	}
+	print("\nhello world!", a);
+	return;
 }
 
-print("\n\n----------\n");
-print("\n", Person_2::name);
-print("\n", Person_2::age);
-print("\n", "Hobbies:");
-print("\n\t", Person_2::Hobbies::a);
-print("\n\t", Person_2::Hobbies::b);
-print("\n\t", Person_2::Hobbies::c);
-print("\n\t", "Inner Hobbies:");
-print("\n\t\t", Person_2::Hobbies::Inner_Hobbies::a1 * 10);
+a = 12;
 
-p = Person;
-p::name = "bob";
-print("\n\n", p::name);
-print("\n\n", Person::name);
+Test(a);
+a = a * 2;
+Test(a);
+t = Test;
+
+t(45);

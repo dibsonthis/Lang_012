@@ -241,6 +241,9 @@ public:
 		case TYPE_VAR:
 			eval_var(node);
 			return;
+		case TYPE_FUNC_DEF:
+			eval_func_def(node);
+			return;
 		}
 	}
 
@@ -1156,6 +1159,21 @@ public:
 
 	// ########### TYPE ASSIGNMENT ########### //
 
+	// ########### FUNC DEF ########### //
+
+	void eval_func_def(std::shared_ptr<AST_Node>& node)
+	{
+		std::shared_ptr<AST_Node> func_var = std::make_shared<AST_Node>(TYPE_VAR);
+
+		func_var->VAR.name = node->FUNC_DEF.name;
+		func_var->VAR.value = std::make_shared<AST_Node>(*node);
+
+		current_scope->SCOPE.data.push_back(func_var);
+		node->type = TYPE_EMPTY;
+		return;
+	}
+
+	// ########### CALL ########### //
 
 	void eval_call(std::shared_ptr<AST_Node>& node)
 	{
@@ -1209,6 +1227,7 @@ public:
 
 			call_str(arg);
 			node = arg;
+			return;
 		}
 
 		if (node->CALL.name == "ref")
@@ -1242,7 +1261,36 @@ public:
 
 			call_import(arg);
 			node = arg;
+			return;
 		}
+
+		auto func_var = get_data(node->CALL.name);
+		auto func = std::make_shared<AST_Node>(*func_var->VAR.value);
+		auto func_scope = new_scope();
+		enter_scope(func_scope);
+		if (func->FUNC_DEF.params.size() != node->CALL.args.size())
+		{
+			std::cout << "\n" << log_error(node, "Function '" + node->CALL.name + "' expects " +
+				std::to_string(func->FUNC_DEF.params.size()) + " argument(s).");
+			node->type = TYPE_ERROR;
+			return;
+		}
+		for (int i = 0; i < node->CALL.args.size(); i++)
+		{
+			auto var_name = func->FUNC_DEF.params[i]->ID.value;
+			auto var_value = std::make_shared<AST_Node>(*node->CALL.args[i]);
+			eval(var_value);
+			auto var = create_var(var_name, var_value);
+			current_scope->SCOPE.data.push_back(var);
+		}
+		for (auto expr : func->FUNC_DEF.body)
+		{
+			auto expr_copy = std::make_shared<AST_Node>(*expr);
+			eval(expr_copy);
+		}
+		exit_scope();
+
+		return;
 	}
 
 	void call_str(std::shared_ptr<AST_Node>& arg)
