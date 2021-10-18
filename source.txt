@@ -1,24 +1,17 @@
 
-	a = 0;
-	b = 0;
+Person = import("person.txt");
 
-	while (a != 100)
-	{
-		while (b != 10)
-		{
-			print("\n", "b: ", b);
-			b = b + 1;
+print("\n", "Hello, my name is ", Person::name, " and I am ", Person::age, " years old!");
 
-			if (b == 5)
-			{
-				break_all; // this break out of all loops
-			}
-		}
-
-		print("\n", "a: ", a);
-		a = a + 1;
-	}
-
-
-
-
+if (Person::sex == "F")
+{
+	print("\n", "I am a woman.");
+}
+else if (Person::sex == "M")
+{
+	print("\n", "I am a man.");
+}
+else
+{
+	print("\n", "No sex.");
+}

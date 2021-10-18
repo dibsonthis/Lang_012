@@ -1546,6 +1546,8 @@ public:
 						node->type = TYPE_BREAK_ALL;
 						return;
 					}
+
+					return;
 				}
 			}			
 		
@@ -1562,6 +1564,8 @@ public:
 						node->type = TYPE_BREAK_ALL;
 						return;
 					}
+
+					return;
 				}
 			}
 			else
