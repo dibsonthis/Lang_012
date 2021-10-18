@@ -817,7 +817,7 @@ public:
 			node->type = TYPE_STRING;
 			std::shared_ptr<std::string> string = std::make_shared<std::string>();
 
-			for (int i = (node->right->STRING.value).length() - 1; i > 0; i--)
+			for (int i = (node->right->STRING.value).length() - 1; i >= 0; i--)
 			{
 				*string = *string + (node->right->STRING.value)[i];
 			}
@@ -1173,6 +1173,13 @@ public:
 		return;
 	}
 
+	void eval_return(std::shared_ptr<AST_Node>& node)
+	{
+		eval(node->RETURN.value);
+		node = node->RETURN.value;
+		return;
+	}
+
 	// ########### CALL ########### //
 
 	void eval_call(std::shared_ptr<AST_Node>& node)
@@ -1264,10 +1271,15 @@ public:
 			return;
 		}
 
+		// Custom Functions
+
 		auto func_var = get_data(node->CALL.name);
 		auto func = std::make_shared<AST_Node>(*func_var->VAR.value);
 		auto func_scope = new_scope();
-		enter_scope(func_scope);
+		for (int i = 0; i < node->CALL.args.size(); i++)
+		{
+			eval(node->CALL.args[i]);
+		}
 		if (func->FUNC_DEF.params.size() != node->CALL.args.size())
 		{
 			std::cout << "\n" << log_error(node, "Function '" + node->CALL.name + "' expects " +
@@ -1275,20 +1287,27 @@ public:
 			node->type = TYPE_ERROR;
 			return;
 		}
+		enter_scope(func_scope);
 		for (int i = 0; i < node->CALL.args.size(); i++)
 		{
 			auto var_name = func->FUNC_DEF.params[i]->ID.value;
 			auto var_value = std::make_shared<AST_Node>(*node->CALL.args[i]);
-			eval(var_value);
 			auto var = create_var(var_name, var_value);
 			current_scope->SCOPE.data.push_back(var);
 		}
 		for (auto expr : func->FUNC_DEF.body)
 		{
-			auto expr_copy = std::make_shared<AST_Node>(*expr);
+			auto expr_copy = deep_copy(expr);
+			if (expr_copy->type == TYPE_RETURN)
+			{
+				eval_return(expr_copy);
+				node = expr_copy;
+				return;
+			}
 			eval(expr_copy);
 		}
 		exit_scope();
+		delete_scope(func_scope);
 
 		return;
 	}

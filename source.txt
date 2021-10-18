@@ -1,15 +1,19 @@
 
-def Test(a)
+def Add(a, b)
 {
-	print("\nhello world!", a);
-	return;
+	r = a + b;
+	return r;
 }
 
-a = 12;
+a = Add(5, 15);
+print(a);
 
-Test(a);
-a = a * 2;
-Test(a);
-t = Test;
+def rev_str(string)
+{
+	string = -string;
+	return string;
+}
 
-t(45);
+s1 = "hello world";
+s2 = rev_str(s1);
+print("\n\n", s2);

@@ -358,7 +358,7 @@ public:
 		else if ((token->type == TYPE_MINUS || token->type == TYPE_PLUS) &&
 			(peek(-1)->is_op || peek(-1)->type == TYPE_SEMICOLON || peek(-1)->type == TYPE_LPAREN ||
 				peek(-1)->type == TYPE_LBRACKET || peek(-1)->type == TYPE_LBRACE ||
-				peek(-1)->type == TYPE_END_OF_EXPRESSON ||
+				peek(-1)->type == TYPE_END_OF_EXPRESSON || peek(-1)->type == TYPE_COMMA ||
 				index == 0))
 		{
 			std::shared_ptr<AST_Node> node = parse_unary_op();
