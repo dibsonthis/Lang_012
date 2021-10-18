@@ -244,6 +244,18 @@ public:
 		case TYPE_FUNC_DEF:
 			eval_func_def(node);
 			return;
+		case TYPE_WHILE:
+			eval_while(node);
+			return;
+		case TYPE_IF_ELSE_STATEMENT:
+			eval_if_else(node);
+			return;
+		case TYPE_EQ_EQ:
+			eval_eq_check(node);
+			return;
+		case TYPE_NOT_EQUAL:
+			eval_not_eq_check(node);
+			return;
 		}
 	}
 
@@ -894,6 +906,352 @@ public:
 		}
 	}
 
+	// ########### EQUALITY ########### //
+
+	void eval_eq_check(std::shared_ptr<AST_Node>& node)
+	{
+		eval(node->left);
+		eval(node->right);
+
+		if (node->left->type == TYPE_VAR)
+		{
+			eval_var(node->left);
+		}
+
+		if (node->right->type == TYPE_VAR)
+		{
+			eval_var(node->right);
+		}
+
+		node->type = TYPE_BOOL;
+
+		//---- INT ----//
+
+		// int, int
+
+		if (node->left->type == TYPE_INT && node->right->type == TYPE_INT)
+		{
+			if (node->left->INT.value == node->right->INT.value)
+			{
+				node->BOOL.value = true;
+			}
+			else
+			{
+				node->BOOL.value = false;
+			}
+
+			return;
+		}
+
+		// int, float
+
+		if (node->left->type == TYPE_INT && node->right->type == TYPE_FLOAT)
+		{
+			if (node->left->INT.value == node->right->FLOAT.value)
+			{
+				node->BOOL.value = true;
+			}
+			else
+			{
+				node->BOOL.value = false;
+			}
+
+			return;
+		}
+
+		//---- FLOAT ----//
+
+		// float, int
+
+		if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_INT)
+		{
+			if (node->left->FLOAT.value == node->right->INT.value)
+			{
+				node->BOOL.value = true;
+			}
+			else
+			{
+				node->BOOL.value = false;
+			}
+
+			return;
+		}
+
+		// float, float
+
+		if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_FLOAT)
+		{
+			if (node->left->FLOAT.value == node->right->FLOAT.value)
+			{
+				node->BOOL.value = true;
+			}
+			else
+			{
+				node->BOOL.value = false;
+			}
+
+			return;
+		}
+
+		//---- BOOL ----//
+
+		// bool, bool
+
+		if (node->left->type == TYPE_BOOL && node->right->type == TYPE_BOOL)
+		{
+			if (node->left->BOOL.value == node->right->BOOL.value)
+			{
+				node->BOOL.value = true;
+			}
+			else
+			{
+				node->BOOL.value = false;
+			}
+
+			return;
+		}
+
+		//---- STRING ----//
+
+		// string, string
+
+		if (node->left->type == TYPE_STRING && node->right->type == TYPE_STRING)
+		{
+			if (node->left->STRING.value == node->right->STRING.value)
+			{
+				node->BOOL.value = true;
+			}
+			else
+			{
+				node->BOOL.value = false;
+			}
+
+			return;
+		}
+
+
+		//---- LIST ----//
+
+		// list, list
+
+		if (node->left->type == TYPE_LIST && node->right->type == TYPE_LIST)
+		{
+			if (node->left->LIST.items.size() != node->right->LIST.items.size())
+			{
+				node->BOOL.value = false;
+				return;
+			}
+
+			auto left_items = node->left->LIST.items;
+			auto right_items = node->right->LIST.items;
+
+			for (int i = 0; i < left_items.size(); i++)
+			{
+				if (left_items[i] != right_items[i])
+				{
+					node->BOOL.value = false;
+					return;
+				}
+			}
+
+			node->BOOL.value = true;
+			return;
+		}
+
+		//---- TYPE ----//
+
+		// type, type
+
+		if (node->left->type == TYPE_TYPE && node->right->type == TYPE_TYPE)
+		{
+			if (node->left->TYPE.name == node->right->TYPE.name)
+			{
+				node->BOOL.value = true;
+			}
+			else
+			{
+				node->BOOL.value = false;
+			}
+
+			return;
+		}
+
+		node->BOOL.value = false;
+	}
+
+	// ########### NOT EQUALITY ########### //
+
+	void eval_not_eq_check(std::shared_ptr<AST_Node>& node)
+	{
+		eval(node->left);
+		eval(node->right);
+
+		if (node->left->type == TYPE_VAR)
+		{
+			eval_var(node->left);
+		}
+
+		if (node->right->type == TYPE_VAR)
+		{
+			eval_var(node->right);
+		}
+
+		node->type = TYPE_BOOL;
+
+		//---- INT ----//
+
+		// int, int
+
+		if (node->left->type == TYPE_INT && node->right->type == TYPE_INT)
+		{
+			if (node->left->INT.value == node->right->INT.value)
+			{
+				node->BOOL.value = false;
+			}
+			else
+			{
+				node->BOOL.value = true;
+			}
+
+			return;
+		}
+
+		// int, float
+
+		if (node->left->type == TYPE_INT && node->right->type == TYPE_FLOAT)
+		{
+			if (node->left->INT.value == node->right->FLOAT.value)
+			{
+				node->BOOL.value = false;
+			}
+			else
+			{
+				node->BOOL.value = true;
+			}
+
+			return;
+		}
+
+		//---- FLOAT ----//
+
+		// float, int
+
+		if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_INT)
+		{
+			if (node->left->FLOAT.value == node->right->INT.value)
+			{
+				node->BOOL.value = false;
+			}
+			else
+			{
+				node->BOOL.value = true;
+			}
+
+			return;
+		}
+
+		// float, float
+
+		if (node->left->type == TYPE_FLOAT && node->right->type == TYPE_FLOAT)
+		{
+			if (node->left->FLOAT.value == node->right->FLOAT.value)
+			{
+				node->BOOL.value = false;
+			}
+			else
+			{
+				node->BOOL.value = true;
+			}
+
+			return;
+		}
+
+		//---- BOOL ----//
+
+		// bool, bool
+
+		if (node->left->type == TYPE_BOOL && node->right->type == TYPE_BOOL)
+		{
+			if (node->left->BOOL.value == node->right->BOOL.value)
+			{
+				node->BOOL.value = false;
+			}
+			else
+			{
+				node->BOOL.value = true;
+			}
+
+			return;
+		}
+
+		//---- STRING ----//
+
+		// string, string
+
+		if (node->left->type == TYPE_STRING && node->right->type == TYPE_STRING)
+		{
+			if (node->left->STRING.value == node->right->STRING.value)
+			{
+				node->BOOL.value = false;
+			}
+			else
+			{
+				node->BOOL.value = true;
+			}
+
+			return;
+		}
+
+
+		//---- LIST ----//
+
+		// list, list
+
+		if (node->left->type == TYPE_LIST && node->right->type == TYPE_LIST)
+		{
+			if (node->left->LIST.items.size() != node->right->LIST.items.size())
+			{
+				node->BOOL.value = true;
+				return;
+			}
+
+			auto left_items = node->left->LIST.items;
+			auto right_items = node->right->LIST.items;
+
+			for (int i = 0; i < left_items.size(); i++)
+			{
+				if (left_items[i] != right_items[i])
+				{
+					node->BOOL.value = true;
+					return;
+				}
+			}
+
+			node->BOOL.value = false;
+			return;
+		}
+
+		//---- TYPE ----//
+
+		// type, type
+
+		if (node->left->type == TYPE_TYPE && node->right->type == TYPE_TYPE)
+		{
+			if (node->left->TYPE.name == node->right->TYPE.name)
+			{
+				node->BOOL.value = false;
+			}
+			else
+			{
+				node->BOOL.value = true;
+			}
+
+			return;
+		}
+
+		node->BOOL.value = true;
+	}
+
 	// ########### ASSIGNMENT ########### //
 
 	void eval_assignment(std::shared_ptr<AST_Node>& node)
@@ -1152,9 +1510,76 @@ public:
 	{
 		while (node->type == TYPE_VAR)
 		{
+			eval(node->VAR.value);
 			node = node->VAR.value;
 		}
 		return;
+	}
+
+	// ########### IF/ELSE ########### //
+
+	void eval_if_else(std::shared_ptr<AST_Node>& node)
+	{
+		for (auto if_stmnt : node->IF_STATEMENT.statements)
+		{
+			eval(if_stmnt->IF.expr);
+
+			if (if_stmnt->IF.expr->type == TYPE_VAR)
+			{
+				eval_var(if_stmnt->IF.expr);
+			}
+
+			if (if_stmnt->type == TYPE_ELSE)
+			{
+				eval(if_stmnt->IF.body);
+				return;
+			}
+			if (if_stmnt->IF.expr->BOOL.value == true)
+			{
+				eval(if_stmnt->IF.body);
+				return;
+			}
+			else
+			{
+				continue;
+			}
+		}
+	}
+
+	// ########### WHILE ########### //
+
+	void eval_while(std::shared_ptr<AST_Node>& node)
+	{
+		std::shared_ptr<AST_Node> while_expr = deep_copy(node->WHILE.expr);
+		eval(while_expr);
+		while (while_expr->type == TYPE_VAR)
+		{
+			eval(while_expr->VAR.value);
+			while_expr = while_expr->VAR.value;
+		}
+		while (while_expr->BOOL.value == true)
+		{
+			for (auto expr : node->WHILE.body)
+			{
+				auto expr_copy = deep_copy(expr);
+				// change to TYPE_BREAK
+				if (expr_copy->type == TYPE_RETURN)
+				{
+					eval_return(expr_copy);
+					node = expr_copy;
+					return;
+				}
+				eval(expr_copy);
+			}
+
+			while_expr = deep_copy(node->WHILE.expr);
+			eval(while_expr);
+			while (while_expr->type == TYPE_VAR)
+			{
+				eval(while_expr->VAR.value);
+				while_expr = while_expr->VAR.value;
+			}
+		}
 	}
 
 	// ########### TYPE ASSIGNMENT ########### //
@@ -1223,14 +1648,7 @@ public:
 				return;
 			}
 
-			auto& arg = node->CALL.args[0];
-
-			if (arg->type != TYPE_STRING)
-			{
-				arg->type = TYPE_ERROR;
-				std::cout << "\n" + log_error(arg, "Built-in function 'import' expects a string argument.");
-				return;
-			}
+			auto arg = deep_copy(node->CALL.args[0]);
 
 			call_str(arg);
 			node = arg;

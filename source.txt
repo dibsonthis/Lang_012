@@ -1,19 +1,15 @@
+a = 0;
 
-def Add(a, b)
+while (a != 101)
 {
-	r = a + b;
-	return r;
+	if (a == 0)
+	{
+		print(a);
+	}
+	else
+	{
+		print("\n", a);
+	}
+
+	a = a + 1;
 }
-
-a = Add(5, 15);
-print(a);
-
-def rev_str(string)
-{
-	string = -string;
-	return string;
-}
-
-s1 = "hello world";
-s2 = rev_str(s1);
-print("\n\n", s2);
