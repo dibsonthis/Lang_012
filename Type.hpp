@@ -79,7 +79,9 @@ enum Type
 	TYPE_REF,
 	TYPE_EQ_AND,
 	TYPE_SCOPE,
-	TYPE_VAR
+	TYPE_VAR,
+	TYPE_BREAK,
+	TYPE_BREAK_ALL
 };
 
 std::string type_repr(Type type)
@@ -157,6 +159,8 @@ std::string type_repr(Type type)
 		case TYPE_REF:					return "REF";
 		case TYPE_SCOPE:				return "SCOPE";
 		case TYPE_VAR:					return "VAR";
+		case TYPE_BREAK:				return "BREAK";
+		case TYPE_BREAK_ALL:			return "BREAK_ALL";
 
 		default: return "NO_REPR";
 	}

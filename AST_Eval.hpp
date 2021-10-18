@@ -202,6 +202,10 @@ public:
 			return;
 		case TYPE_TYPE:
 			return;
+		case TYPE_BREAK:
+			return;
+		case TYPE_BREAK_ALL:
+			return;
 		case TYPE_ID:
 			eval_id(node);
 			return;
@@ -1531,13 +1535,34 @@ public:
 
 			if (if_stmnt->type == TYPE_ELSE)
 			{
-				eval(if_stmnt->IF.body);
-				return;
-			}
+				for (auto expr : if_stmnt->IF.body->BLOCK.body)
+				{
+					auto expr_copy = deep_copy(expr);
+
+					eval(expr_copy);
+
+					if (expr_copy->type == TYPE_BREAK || expr_copy->type == TYPE_BREAK_ALL)
+					{
+						node->type = TYPE_BREAK_ALL;
+						return;
+					}
+				}
+			}			
+		
 			if (if_stmnt->IF.expr->BOOL.value == true)
 			{
-				eval(if_stmnt->IF.body);
-				return;
+				for (auto expr : if_stmnt->IF.body->BLOCK.body)
+				{
+					auto expr_copy = deep_copy(expr);
+
+					eval(expr_copy);
+
+					if (expr_copy->type == TYPE_BREAK || expr_copy->type == TYPE_BREAK_ALL)
+					{
+						node->type = TYPE_BREAK_ALL;
+						return;
+					}
+				}
 			}
 			else
 			{
@@ -1562,14 +1587,18 @@ public:
 			for (auto expr : node->WHILE.body)
 			{
 				auto expr_copy = deep_copy(expr);
-				// change to TYPE_BREAK
-				if (expr_copy->type == TYPE_RETURN)
+
+				eval(expr_copy);
+
+				if (expr_copy->type == TYPE_BREAK)
 				{
-					eval_return(expr_copy);
-					node = expr_copy;
 					return;
 				}
-				eval(expr_copy);
+				else if (expr_copy->type == TYPE_BREAK_ALL)
+				{
+					node->type = TYPE_BREAK_ALL;
+					return;
+				}
 			}
 
 			while_expr = deep_copy(node->WHILE.expr);

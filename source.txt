@@ -1,15 +1,24 @@
-a = 0;
 
-while (a != 101)
-{
-	if (a == 0)
+	a = 0;
+	b = 0;
+
+	while (a != 100)
 	{
-		print(a);
-	}
-	else
-	{
-		print("\n", a);
+		while (b != 10)
+		{
+			print("\n", "b: ", b);
+			b = b + 1;
+
+			if (b == 5)
+			{
+				break_all; // this break out of all loops
+			}
+		}
+
+		print("\n", "a: ", a);
+		a = a + 1;
 	}
 
-	a = a + 1;
-}
+
+
+

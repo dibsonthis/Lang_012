@@ -340,6 +340,16 @@ public:
 			std::shared_ptr<AST_Node> node = parse_return();
 			return node;
 		}
+		else if (token->type == TYPE_ID && token->get_id_value() == "break")
+		{
+			std::shared_ptr<AST_Node> node = std::make_shared<AST_Node>(TYPE_BREAK);
+			return node;
+		}
+		else if (token->type == TYPE_ID && token->get_id_value() == "break_all")
+		{
+			std::shared_ptr<AST_Node> node = std::make_shared<AST_Node>(TYPE_BREAK_ALL);
+			return node;
+		}
 		else if (token->type == TYPE_ID && peek()->type == TYPE_LBRACE)
 		{
 			std::shared_ptr<AST_Node> node = parse_named_block();
