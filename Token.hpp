@@ -22,88 +22,15 @@ struct Token
 	Token(int lexer_line, int lexer_column) : line(lexer_line), column(lexer_column) {}
 	Token(Type type, int lexer_line, int lexer_column) : type(type), line(lexer_line), column(lexer_column) {}
 
-	const std::string get_id_value()
-	{
-		if (type == TYPE_ID)
-		{
-			return *id_value;
-		}
-		else
-		{
-			return "";
-		}
-	}
+	const std::string get_id_value();
 
-	int get_int_value()
-	{
-		if (type == TYPE_INT)
-		{
-			return int_value;
-		}
-		else
-		{
-			return 0;
-		}
-	}
+	int get_int_value();
 
-	float get_float_value()
-	{
-		if (type == TYPE_FLOAT)
-		{
-			return float_value;
-		}
-		else
-		{
-			return 0.0f;
-		}
-	}
+	float get_float_value();
 
-	const std::string get_string_value()
-	{
-		if (type == TYPE_STRING)
-		{
-			return *string_value;
-		}
-		else
-		{
-			return "";
-		}
-	}
+	const std::string get_string_value();
 };
 
-void print_token(std::shared_ptr<Token> token)
-{
-	if (token->type == TYPE_ID)
-	{
-		std::cout << type_repr(token->type) << "(" << token->get_id_value() << ")";
-	}
-	else if (token->type == TYPE_INT)
-	{
-		std::cout << type_repr(token->type) << "(" << token->get_int_value() << ")";
-	}
-	else if (token->type == TYPE_FLOAT)
-	{
-		std::cout << type_repr(token->type) << "(" << token->get_float_value() << ")";
-	}
-	else if (token->type == TYPE_STRING)
-	{
-		std::cout << type_repr(token->type) << "("
-			<< "\"" << token->get_string_value() << "\"" << ")";
-	}
-	else
-	{
-		std::cout << "TOKEN(" << type_repr(token->type) << ")";
-	}
-}
+void print_token(std::shared_ptr<Token> token);
 
-void print_tokens(std::vector<std::shared_ptr<Token>> tokens)
-{
-	std::cout << "\nTokens: " << std::to_string(tokens.size());
-	std::cout << "\n[ ";
-	for (auto token : tokens)
-	{
-		print_token(token);
-		std::cout << " ";
-	}
-	std::cout << " ]";
-}
+void print_tokens(std::vector<std::shared_ptr<Token>> tokens);
